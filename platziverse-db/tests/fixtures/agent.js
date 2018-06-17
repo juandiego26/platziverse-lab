@@ -3,14 +3,13 @@
 const agent = {
   id: 1,
   uuid: 'yyy-yyy-yyy',
-  name: 'fixtures',
+  name: 'fixture',
   username: 'platzi',
   hostname: 'test-host',
   pid: 0,
   connected: true,
   createdAt: new Date(),
   updatedAt: new Date()
-
 }
 
 const agents = [
