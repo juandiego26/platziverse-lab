@@ -12,8 +12,13 @@ api.get('/agents', (req, res) => {
 })
 
 // ruta del agente con su uuid
-api.get('/agent/:uuid', (req, res) => {
+api.get('/agent/:uuid', (req, res, next) => {
   const { uuid } = req.params
+
+  if (uuid !== 'yyy') {
+    return next(new Error('Agent not found'))
+  }
+
   res.send({ uuid })
 })
 
