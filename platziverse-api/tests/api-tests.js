@@ -6,18 +6,21 @@ const sinon = require('sinon')
 const proxyquire = require('proxyquire')
 
 const agentFixtures = require('./fixtures/agent')
+const metricFixtures = require('./fixtures/metric')
 
-let sandbox = null // sanbox de sinon
-let server = null // server fake for test
-let dbStub = null // Stub de la DB
-let AgentStub = {} // Stub de Agents
-let MetricStub = {} // Stub de Metrics
+let sandbox = null
+let server = null
+let dbStub = null
+let AgentStub = {}
+let MetricStub = {}
+let uuid = 'yyy-yyy-yyy'
+let uuidErr = 'yyy-yyy-yya'
+let type = 'ram'
 
-// hook que se ejecuta antes de los tests
 test.beforeEach(async () => {
-  sandbox = sinon.createSandbox() // creamos el sandbox
+  sandbox = sinon.createSandbox()
 
-  dbStub = sandbox.stub() // stub de DB
+  dbStub = sandbox.stub()
   dbStub.returns(Promise.resolve({
     Agent: AgentStub,
     Metric: MetricStub
@@ -25,6 +28,15 @@ test.beforeEach(async () => {
 
   AgentStub.findConnected = sandbox.stub()
   AgentStub.findConnected.returns(Promise.resolve(agentFixtures.connected))
+
+  AgentStub.findByUuid = sandbox.stub()
+  AgentStub.findByUuid.returns(Promise.resolve(agentFixtures.single))
+
+  MetricStub.findByAgentUuid = sandbox.stub()
+  MetricStub.findByAgentUuid.withArgs(uuid).returns(Promise.resolve(metricFixtures.findByAgentUuid(uuid)))
+
+  MetricStub.findByTypeAgentUuid = sandbox.stub()
+  MetricStub.findByTypeAgentUuid.withArgs(type, uuid).returns(Promise.resolve(metricFixtures.findByTypeAgentUuid(type, uuid)))
 
   const api = proxyquire('../api', {
     'platziverse-db': dbStub
@@ -35,14 +47,13 @@ test.beforeEach(async () => {
   })
 })
 
-// hook que se ejecuta despues de cada test
 test.afterEach(() => {
-  sandbox && sandbox.restore() // restauramos el sandbox si existe
+  sandbox && sandbox.restore()
 })
 
 test.serial.cb('/api/agents', t => {
   request(server)
-    .get('/api/agents/')
+    .get('/api/agents')
     .expect(200)
     .expect('Content-Type', /json/)
     .end((err, res) => {
@@ -54,11 +65,77 @@ test.serial.cb('/api/agents', t => {
     })
 })
 
-test.serial.todo('/api/agent/:uuid')
-test.serial.todo('/api/agent/:uuid - not found')
+test.serial.cb('/api/agent/:uuid', t => {
+  request(server)
+    .get(`/api/agent/${uuid}`)
+    .expect(200)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.falsy(err, 'should not return an error')
+      let body = JSON.stringify(res.body)
+      let expected = JSON.stringify(agentFixtures.single)
+      t.deepEqual(body, expected, 'response body should be the expected')
+      t.end()
+    })
+})
 
-test.serial.todo('/api/metrics/:uuid')
-test.serial.todo('/api/metrics/:uuid - not found')
+test.serial.cb('/api/agent/:uuid - not found', t => {
+  request(server)
+    .get(`/api/agent/${uuidErr}`)
+    .expect(404)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.truthy(err, 'should return an error')
+      t.end()
+    })
+})
 
-test.serial.todo('/api/metrics/:uuid/:type')
-test.serial.todo('/api/metrics/:uuid/:type - not found')
+test.serial.cb('/api/metrics/:uuid', t => {
+  request(server)
+    .get(`/api/metrics/${uuid}`)
+    .expect(200)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.falsy(err, 'should not return an error')
+      let body = JSON.stringify(res.body)
+      let expected = JSON.stringify(metricFixtures.findByAgentUuid(uuid))
+      t.deepEqual(body, expected, 'response body should be the expected')
+      t.end()
+    })
+})
+
+test.serial.cb('/api/metrics/:uuid - not found', t => {
+  request(server)
+    .get(`/api/metrics/${uuidErr}`)
+    .expect(200)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.truthy(err, 'should not return an error')
+      t.end()
+    })
+})
+
+test.serial.cb('/api/metrics/:uuid/:type', t => {
+  request(server)
+    .get(`/api/metrics/${uuid}/${type}`)
+    .expect(200)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.falsy(err, 'should not return an error')
+      let body = JSON.stringify(res.body)
+      let expected = JSON.stringify(metricFixtures.findByTypeAgentUuid(type, uuid))
+      t.deepEqual(body, expected, 'response body should be the expected')
+      t.end()
+    })
+})
+
+test.serial.cb('/api/metrics/:uuid/:type - not found', t => {
+  request(server)
+    .get(`/api/metrics/${uuidErr}/${type}`)
+    .expect(200)
+    .expect('Content-Type', /json/)
+    .end((err, res) => {
+      t.truthy(err, 'should not return an error')
+      t.end()
+    })
+})
