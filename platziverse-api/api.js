@@ -3,6 +3,7 @@
 const debug = require('debug')('platziverse:api:routes')
 const express = require('express')
 const asyncify = require('express-asyncify')
+const auth = require('express-jwt')
 const db = require('platziverse-db')
 
 const config = require('./config')
@@ -27,12 +28,22 @@ api.use('*', async (req, res, next) => {
 })
 
 // ruta tipo get retorna los agentes conectados en el servidor
-api.get('/agents', async (req, res, next) => {
+api.get('/agents', auth(config.auth), async (req, res, next) => {
   debug('A request has come to /agents')
+
+  const { user } = req
+
+  if (!user || !user.username) {
+    return next(new Error('Not authorized'))
+  }
 
   let agents = []
   try {
-    agents = await Agent.findConnected()
+    if (user.admin) {
+      agents = await Agent.findConnected()
+    } else {
+      agents = await Agent.findByUsername(user.username)
+    }
   } catch (e) {
     return next(e)
   }
@@ -41,7 +52,7 @@ api.get('/agents', async (req, res, next) => {
 })
 
 // ruta del agente con su uuid
-api.get('/agent/:uuid', async (req, res, next) => {
+api.get('/agent/:uuid', auth(config.auth), async (req, res, next) => {
   const { uuid } = req.params
 
   debug(`request to /agent/${uuid}`)
@@ -61,7 +72,7 @@ api.get('/agent/:uuid', async (req, res, next) => {
 })
 
 // ruta get retorna metricas tiene reportadas un agente especifíco
-api.get('/metrics/:uuid', async (req, res, next) => {
+api.get('/metrics/:uuid', auth(config.auth), async (req, res, next) => {
   const { uuid } = req.params
 
   debug(`request to /metrics/${uuid}`)
@@ -81,7 +92,7 @@ api.get('/metrics/:uuid', async (req, res, next) => {
 })
 
 // ruta get retorna métricas aagente especifico con su tipo.
-api.get('/metrics/:uuid/:type', async (req, res, next) => {
+api.get('/metrics/:uuid/:type', auth(config.auth), async (req, res, next) => {
   const { uuid, type } = req.params
 
   debug(`request to /metrics/${uuid}/${type}`)
