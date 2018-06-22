@@ -59,3 +59,4 @@ typings/
 
 # Built project files
 package-lock.json
+bundle.js

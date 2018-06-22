@@ -2,7 +2,7 @@
 
 function pipe (source, target) {
   if (!source.emit || !target.emit) {
-    throw TypeError(`Please pass EventEmitter's as arguments`)
+    throw TypeError(`Please pass EventEmitter's as argument`)
   }
 
   const emit = source._emit = source.emit

@@ -2,27 +2,46 @@
 
 const debug = require('debug')('platziverse:web')
 const http = require('http')
-const path = require('path') // modulo recomendado para hacer op con la ruta del sistema de archivos
+const path = require('path')
 const express = require('express')
+const asyncify = require('express-asyncify')
 const socketio = require('socket.io')
 const chalk = require('chalk')
 const PlatziverseAgent = require('platziverse-agent')
 
+const proxy = require('./proxy')
 const { pipe } = require('./utils')
+const { mqttHost } = require('./config')
 
 const port = process.env.PORT || 8080
-const app = express()
+const app = asyncify(express())
 const server = http.createServer(app)
-const io = socketio(server) // instancia de socket.io
-const agent = new PlatziverseAgent() // instancia de agent
+const io = socketio(server)
+const agent = new PlatziverseAgent({
+  mqtt: {
+    host: mqttHost
+  }
+})
 
-// middleware de express static path join es como la ruta ./public - ./ + public
 app.use(express.static(path.join(__dirname, 'public')))
+app.use('/', proxy)
+
 // Socket.io / WebSockets
 io.on('connect', socket => {
   debug(`Connected ${socket.id}`)
 
   pipe(agent, socket)
+})
+
+// Express Error Handler
+app.use((err, req, res, next) => {
+  debug(`Error: ${err.message}`)
+
+  if (err.message.match(/not found/)) {
+    return res.status(404).send({ error: err.message })
+  }
+
+  res.status(500).send({ error: err.message })
 })
 
 function handleFatalError (err) {
