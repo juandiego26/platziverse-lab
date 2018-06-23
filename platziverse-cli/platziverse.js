@@ -2,12 +2,69 @@
 
 'use strict'
 
-// import args from 'args'
-const args = require('args')
+/* eslint new-cap: "off" */
+const blessed = require('blessed')
+const contrib = require('blessed-contrib')
+const PlatziverseAgent = require('platziverse-agent')
 
-args
-  .option('port', 'The port on which the app will be running', 3000)
-  .option('reload', 'Enable/disable livereloading')
-  .command('serve', 'Serve your static site', ['s'])
+// pantalla con la que vamos a trabajar
+const agent = new PlatziverseAgent()
+const screen = blessed.screen()
 
-const flags = args.parse(process.argv)
+const agents = new Map()
+const agentMetrics = new Map()
+
+const grid = new contrib.grid({
+  rows: 1,
+  cols: 4,
+  screen
+})
+// arbol donde vamos a tener la lista de los agentes
+const tree = grid.set(0, 0, 1, 1, contrib.tree, {
+  label: 'Connected Agents'
+})
+// Componente del chart
+const line = grid.set(0, 1, 1, 3, contrib.line, {
+  label: 'Metric',
+  showLegend: true,
+  minY: 0,
+  xPadding: 5
+})
+
+agent.on('agent/connected', payload => {
+  const { uuid } = payload.agent
+
+  if (!agents.has(uuid)) {
+    agents.set(uuid, payload.agent)
+    agentMetrics.set(uuid, {})
+  }
+
+  renderData()
+})
+
+function renderData () {
+  const treeData = {}
+
+  for (let [ uuid, val ] of agents) {
+    const title = `${val.name} - (${val.pid})`
+    treeData[title] = {
+      uuid,
+      agent: true,
+      children: {}
+    }
+  }
+
+  tree.setData({
+    extended: true,
+    children: treeData
+  })
+  screen.render()
+}
+
+// combinación de teclas para salir
+screen.key([ 'escape', 'q', 'C-c' ], (ch, key) => {
+  process.exit(0)
+})
+// renderizar todos los componentes
+agent.connect()
+screen.render()
