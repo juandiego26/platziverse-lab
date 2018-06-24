@@ -20,6 +20,7 @@
   "homepage": "https://github.com/juandiego26/platziverse-lab#readme",
   "devDependencies": {
     "ava": "^0.25.0",
+    "longjohn": "^0.2.12",
     "nyc": "^12.0.2",
     "proxyquire": "^2.0.1",
     "sinon": "^6.0.0",
